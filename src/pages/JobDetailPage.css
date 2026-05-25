@@ -197,6 +197,15 @@
   background: rgba(92, 168, 255, 0.04);
 }
 
+.preview-card {
+  border-color: rgba(144, 136, 255, 0.2);
+  background: rgba(144, 136, 255, 0.05);
+}
+
+.preview-card .diff-title {
+  color: var(--purple);
+}
+
 .running-anim {
   display: flex;
   gap: 5px;
