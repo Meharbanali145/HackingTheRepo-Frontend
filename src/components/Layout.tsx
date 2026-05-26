@@ -2,6 +2,8 @@ import type { MouseEventHandler, ReactElement, SVGProps } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThemeToggle from "./ThemeToggle";
+import NotificationBell from "./NotificationBell";
+import Toasts from "./Toast";
 import "./Layout.css";
 
 interface NavLinkState {
@@ -69,6 +71,22 @@ export default function Layout(): ReactElement {
             </svg>
             Dashboard
           </NavLink>
+          <NavLink to="/analytics" className={getNavItemClassName}>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M3 3v18h18" />
+              <path d="M7 13v6" />
+              <path d="M12 9v10" />
+              <path d="M17 5v14" />
+            </svg>
+            Analytics
+          </NavLink>
           <NavLink to="/jobs/new" className={getNavItemClassName}>
             <svg
               width="16"
@@ -112,6 +130,7 @@ export default function Layout(): ReactElement {
           </div>
           <div className="sidebar-actions">
             <ThemeToggle className="theme-toggle--sidebar" />
+            <NotificationBell />
             <button
               onClick={handleLogout}
               className="logout-btn"
@@ -135,6 +154,7 @@ export default function Layout(): ReactElement {
       </aside>
 
       <main className="main-content">
+        <Toasts />
         <Outlet />
       </main>
     </div>
