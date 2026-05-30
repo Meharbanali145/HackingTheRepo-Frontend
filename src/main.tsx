@@ -1,7 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { ErrorBoundary } from "@sentry/react";
 import App from "./App";
 import "./index.css";
+import "./sentry.ts";
 
 const root = document.getElementById("root");
 
@@ -11,6 +13,10 @@ if (!root) {
 
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <App />
-  </React.StrictMode>
+    <ErrorBoundary
+      fallback={<div>Something went wrong. The error has been reported.</div>}
+    >
+      <App />
+    </ErrorBoundary>
+  </React.StrictMode>,
 );

@@ -155,6 +155,27 @@ To point the app at a different backend:
 VITE_API_URL=https://your-backend.vercel.app
 ```
 
+### Sentry monitoring
+
+To enable frontend Sentry error tracking and performance tracing, add the browser-facing Sentry env vars:
+
+```bash
+VITE_SENTRY_DSN=https://<PUBLIC_KEY>@sentry.io/<PROJECT_ID>
+VITE_SENTRY_ENVIRONMENT=production
+VITE_SENTRY_TRACES_SAMPLE_RATE=0.25
+VITE_SENTRY_RELEASE=frontend@1.0.0
+```
+
+For sourcemap upload during production builds, set the build-only Sentry variables in your CI environment. Do not commit these values to source control:
+
+```bash
+SENTRY_AUTH_TOKEN=┗ your sentry auth token
+SENTRY_ORG=<your-org-slug>
+SENTRY_PROJECT=<your-project-slug>
+SENTRY_RELEASE=frontend@1.0.0
+SENTRY_URL=https://sentry.io/   # optional
+```
+
 ---
 
 ## Scripts
