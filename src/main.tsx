@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
+import { ErrorBoundary } from "@sentry/react";
 import * as Sentry from "@sentry/react";
 import {
   createRoutesFromChildren,
@@ -9,6 +10,7 @@ import {
 } from "react-router-dom";
 import App from "./App";
 import "./index.css";
+import "./sentry.ts";
 
 Sentry.init({
   dsn: "https://3ee482487035cdb1620b04057216101a@o4511430903988224.ingest.us.sentry.io/4511430909755392",
@@ -36,6 +38,12 @@ if (!root) {
 
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
+    <ErrorBoundary
+      fallback={<div>Something went wrong. The error has been reported.</div>}
+    >
+      <App />
+    </ErrorBoundary>
+  </React.StrictMode>,
     <Sentry.ErrorBoundary fallback={<p>Something went wrong.</p>}>
       <App />
     </Sentry.ErrorBoundary>
