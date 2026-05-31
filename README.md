@@ -176,6 +176,54 @@ SENTRY_RELEASE=frontend@1.0.0
 SENTRY_URL=https://sentry.io/   # optional
 ```
 
+### Distributed tracing (OpenTelemetry)
+
+This frontend is now instrumented for OpenTelemetry browser tracing. To enable it, set:
+
+```bash
+VITE_OTEL_TRACES_ENDPOINT=https://your-otel-collector.example.com/v1/traces
+VITE_OTEL_SERVICE_NAME=repomind-frontend
+VITE_OTEL_ENVIRONMENT=production
+```
+
+The browser will emit W3C trace context headers on outgoing API requests, so an Express backend and a FastAPI backend can continue the same distributed trace.
+
+#### Backend requirements
+
+- Express must accept `traceparent` / `baggage` headers, continue the active span, and forward the same trace headers to downstream services.
+- FastAPI must also accept propagated headers and export spans to Jaeger/Tempo via OTLP.
+
+Example backend setup:
+
+- Express: `@opentelemetry/sdk-node`, `@opentelemetry/instrumentation-express`, `@opentelemetry/instrumentation-http`
+- FastAPI: `opentelemetry-sdk`, `opentelemetry-instrumentation-fastapi`, `opentelemetry-exporter-otlp`
+
+This repository only contains frontend browser instrumentation. The backend services must be instrumented separately to get full traces spanning Express → Repomind FastAPI.
+
+### Prometheus metrics endpoint
+
+This project now includes a local Prometheus-compatible metrics server for job throughput, queue depth, and API latency histograms.
+
+Start the metrics collector in a separate terminal:
+
+```bash
+npm run metrics
+```
+
+Then start the frontend dev server normally:
+
+```bash
+npm run dev
+```
+
+The app proxies `/metrics` to the local collector, so Prometheus can scrape:
+
+```text
+http://localhost:3000/metrics
+```
+
+If your backend supports it, point `VITE_API_URL` at your API server and use job-related request telemetry for the job metrics.
+
 ---
 
 ## Scripts
