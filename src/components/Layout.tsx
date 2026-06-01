@@ -1,4 +1,4 @@
-import type { MouseEventHandler, ReactElement, SVGProps } from "react";
+import { useEffect,useState,type MouseEventHandler,type ReactElement,type SVGProps,} from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThemeToggle from "./ThemeToggle";
@@ -27,6 +27,7 @@ const GitIcon = (props: IconProps): ReactElement => (
 export default function Layout(): ReactElement {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [showShortcuts, setShowShortcuts] = useState(false); //
 
   const getNavItemClassName = ({ isActive }: NavLinkState): string =>
     `nav-item ${isActive ? "active" : ""}`;
@@ -35,6 +36,37 @@ export default function Layout(): ReactElement {
     logout();
     navigate("/");
   };
+  //
+  useEffect(() => {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    const tag = (e.target as HTMLElement)?.tagName;
+    if (
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      (e.target as HTMLElement)?.isContentEditable
+    ) {
+      return;
+    }
+
+    if (e.key.toLowerCase() === "n") {
+      navigate("/jobs/new");
+    }
+
+    if (e.key.toLowerCase() === "d") {
+      navigate("/dashboard");
+    }
+
+    if (e.key === "?") {
+      setShowShortcuts((prev) => !prev);
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+
+  return () => {
+    window.removeEventListener("keydown", handleKeyDown);
+  };
+}, [navigate]);
 
   return (
     <div className="layout">
@@ -154,9 +186,34 @@ export default function Layout(): ReactElement {
       </aside>
 
       <main className="main-content">
-        <Toasts />
-        <Outlet />
-      </main>
+  <Toasts />
+
+  {showShortcuts && (
+    <div
+      style={{
+  position: "fixed",
+  top: "20px",
+  right: "20px",
+  background: "#ffffff",
+  color: "#111111",
+  border: "1px solid #d1d5db",
+  borderRadius: "12px",
+  padding: "16px",
+  zIndex: 1000,
+  minWidth: "220px",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+  }}  
+    >
+      <h3 style={{ marginTop: 0 }}>Keyboard Shortcuts</h3>
+
+      <p><strong>N</strong> → New Job</p>
+      <p><strong>D</strong> → Dashboard</p>
+      <p><strong>?</strong> → Help</p>
+    </div>
+    )}
+
+    <Outlet />
+  </main>
     </div>
   );
 }
