@@ -15,7 +15,7 @@ import DashboardPage from "./pages/DashboardPage";
 import NewJobPage from "./pages/NewJobPage";
 import JobDetailPage from "./pages/JobDetailPage";
 import SettingsPage from "./pages/SettingsPage";
-import AnalyticsPage from "./pages/AnalyticsPage.tsx";
+import AnalyticsPage from "./pages/AnalyticsPage";
 
 interface RouteWrapperProps {
   children: ReactElement;

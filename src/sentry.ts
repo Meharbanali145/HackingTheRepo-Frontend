@@ -23,7 +23,7 @@ if (dsn) {
     tracesSampleRate,
     attachStacktrace: true,
     normalizeDepth: 10,
-    beforeSend(event, hint) {
+    beforeSend(event) {
       return event;
     },
   });
