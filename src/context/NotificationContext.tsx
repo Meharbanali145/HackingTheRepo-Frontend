@@ -10,7 +10,7 @@ export interface Notification {
   body?: string;
   kind?: NotificationKind;
   read?: boolean;
-  meta?: any;
+  meta?: Record<string, unknown>;
 }
 
 interface NotificationContextValue {
@@ -78,7 +78,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
         // store snapshot
         jobsRef.current = nextMap;
-      } catch (e) {
+      } catch {
         // ignore polling errors
       }
     };
@@ -91,7 +91,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         const map: Record<string, string> = {};
         jobs.forEach((j) => (map[j._id] = j.status));
         jobsRef.current = map;
-      } catch {}
+      } catch {
+        // ignore initial polling errors
+      }
     })();
 
     const iv = setInterval(() => { if (!cancelled) check(); }, 8000);

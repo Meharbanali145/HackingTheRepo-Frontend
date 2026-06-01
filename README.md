@@ -233,7 +233,35 @@ npm run dev       # Hot-reloading dev server
 npm run build     # Production bundle → /dist
 npm run preview   # Serve /dist locally
 npm run lint      # ESLint (if configured)
+npm run test      # Vitest test suite
 ```
+
+---
+
+## CI/CD
+
+GitHub Actions runs tests, linting, and a production build on every pull request to `main` and every push to `main`.
+Successful pushes to `main` are deployed to Vercel production automatically.
+
+Required GitHub repository secrets:
+
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+Optional GitHub repository variables used at build/deploy time:
+
+- `VITE_API_URL`
+- `VITE_SENTRY_DSN`
+- `VITE_SENTRY_TRACES_SAMPLE_RATE`
+- `VITE_OTEL_TRACES_ENDPOINT`
+- `VITE_OTEL_SERVICE_NAME`
+
+Optional GitHub repository secrets for Sentry sourcemap uploads:
+
+- `SENTRY_AUTH_TOKEN`
+- `SENTRY_ORG`
+- `SENTRY_PROJECT`
 
 ---
 

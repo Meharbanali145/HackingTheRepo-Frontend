@@ -41,6 +41,10 @@ export interface Job {
   prUrl?: string;
   status: JobStatus | string;
   createdAt: string;
+  startedAt?: string;
+  finishedAt?: string;
+  completedAt?: string;
+  updatedAt?: string;
   repomindJobId?: string;
   diffSummary?: string;
   errorMessage?: string;

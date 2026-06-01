@@ -21,7 +21,7 @@ function formatDateISO(d: Date) {
 export default function JobDurationTrendChart({ jobs, loading }: Props) {
   // compute durations in minutes when possible
   const map = new Map<string, { total: number; count: number }>();
-  jobs.forEach((j: any) => {
+  jobs.forEach((j) => {
     const start = j.startedAt || j.createdAt;
     const end = j.finishedAt || j.completedAt || j.updatedAt || null;
     if (!start || !end) return;
