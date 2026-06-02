@@ -4,6 +4,7 @@ export interface AuthUser {
   id?: string;
   username: string;
   email: string;
+  githubUsername?: string;
   totalJobs?: number;
   successfulPRs?: number;
 }
@@ -15,6 +16,8 @@ export interface LocalUser extends AuthUser {
 export interface AuthResponse {
   token: string;
   user: AuthUser | null;
+  githubUsername?: string;
+  githubToken?: string;
 }
 
 export interface ApiErrorResponse {

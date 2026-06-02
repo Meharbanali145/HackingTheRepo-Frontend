@@ -2,8 +2,13 @@ import axios, { type AxiosRequestConfig } from "axios";
 import { context, propagation } from "@opentelemetry/api";
 import { sendMetricEvent } from "./metrics";
 
+const baseURL =
+  import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.length > 0
+    ? import.meta.env.VITE_API_URL
+    : "/api";
+
 const api = axios.create({
-  baseURL: "/api",
+  baseURL,
   timeout: 30000,
 });
 

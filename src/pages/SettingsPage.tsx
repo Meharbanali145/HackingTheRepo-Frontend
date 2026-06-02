@@ -6,13 +6,18 @@ import "./SettingsPage.css";
 
 type SettingsForm = Pick<Settings, "githubUsername" | "githubToken" | "openaiKey">;
 
+interface PendingGithubSettings {
+  githubUsername?: string;
+  githubToken?: string;
+}
+
 interface TokenVisibility {
   github: boolean;
   openai: boolean;
 }
 
 export default function SettingsPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, loginWithGithub } = useAuth();
   const [settings, setSettings] = useState<Settings>({
     githubUsername: "",
     githubToken: "",
@@ -27,10 +32,54 @@ export default function SettingsPage() {
   const [showTokens, setShowTokens] = useState<TokenVisibility>({ github: false, openai: false });
 
   useEffect(() => {
-    api.get("/settings").then(({ data }) => {
-      setSettings(data as Settings);
-      setForm({ githubUsername: data.githubUsername, githubToken: "", openaiKey: "" });
+    let cancelled = false;
+
+    const readPendingGithubSettings = (): PendingGithubSettings | null => {
+      try {
+        const value = localStorage.getItem("rm_pending_github_settings");
+        return value ? (JSON.parse(value) as PendingGithubSettings) : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const loadSettings = async () => {
+      const { data } = await api.get("/settings");
+      if (cancelled) return;
+
+      const nextSettings = data as Settings;
+      const pendingGithub = readPendingGithubSettings();
+      const nextForm: SettingsForm = {
+        githubUsername:
+          pendingGithub?.githubUsername || nextSettings.githubUsername || "",
+        githubToken: pendingGithub?.githubToken || "",
+        openaiKey: "",
+      };
+
+      setSettings(nextSettings);
+      setForm(nextForm);
+
+      if (pendingGithub?.githubToken) {
+        await api.put("/settings", nextForm);
+        localStorage.removeItem("rm_pending_github_settings");
+        if (!cancelled) {
+          const refreshed = await api.get("/settings");
+          setSettings(refreshed.data as Settings);
+          setForm((current) => ({ ...current, githubToken: "" }));
+        }
+      }
+    };
+
+    loadSettings().catch((err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      if (!cancelled) {
+        setError(error.response?.data?.message || "Failed to load settings");
+      }
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const set =
@@ -91,8 +140,18 @@ export default function SettingsPage() {
               GitHub (your account)
             </h2>
             <div className="settings-note">
-              Your personal GitHub username helps with display. The actual PR bot uses the <code>SENDROOM</code> bot configured in the server environment.
+              Connect GitHub to sign in with one click and store the username/token returned by your backend OAuth flow.
             </div>
+            <button
+              type="button"
+              className="github-connect-btn"
+              onClick={loginWithGithub}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z" />
+              </svg>
+              Connect GitHub
+            </button>
             <div className="field">
               <label>Your GitHub Username</label>
               <input type="text" placeholder="octocat" value={form.githubUsername} onChange={set("githubUsername")} />
@@ -115,7 +174,7 @@ export default function SettingsPage() {
                 </button>
               </div>
               <span className="field-hint">
-                Needs <code>repo</code> scope. Used for verifying repository access in future features.
+                OAuth should request repository access if your backend needs to verify private repositories or create PRs as the user.
               </span>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useEffect,useState,type MouseEventHandler,type ReactElement,type SVGProps,} from "react";
+import { useEffect, useState, type MouseEventHandler, type ReactElement } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThemeToggle from "./ThemeToggle";

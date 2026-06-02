@@ -155,6 +155,24 @@ To point the app at a different backend:
 VITE_API_URL=https://your-backend.vercel.app
 ```
 
+### GitHub OAuth backend
+
+This repo can also run a local auth backend that supports GitHub OAuth and settings persistence.
+
+To start the backend server locally:
+
+```bash
+GITHUB_CLIENT_ID=<your-client-id> GITHUB_CLIENT_SECRET=<your-client-secret> npm run dev:api
+```
+
+Then start the frontend in another terminal:
+
+```bash
+npm run dev
+```
+
+The frontend will proxy `/api/*` to `http://localhost:5000` during development.
+
 ### Sentry monitoring
 
 To enable frontend Sentry error tracking and performance tracing, add the browser-facing Sentry env vars:
