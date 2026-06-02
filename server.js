@@ -10,7 +10,8 @@ const dataFile = path.resolve("auth-data.json");
 const port = Number(process.env.PORT) || 5000;
 const githubClientId = process.env.GITHUB_CLIENT_ID;
 const githubClientSecret = process.env.GITHUB_CLIENT_SECRET;
-const githubScope = process.env.GITHUB_OAUTH_SCOPE || "repo read:user user:email";
+const githubScope =
+  process.env.GITHUB_OAUTH_SCOPE || "repo read:user user:email";
 
 const defaultData = {
   users: [
@@ -46,7 +47,8 @@ const saveData = async (data) => {
 const data = await loadData();
 
 const normalizeUser = (user) => {
-  const { password, ...safeUser } = user;
+  const { password: _password, ...safeUser } = user;
+  void _password;
   return safeUser;
 };
 
@@ -65,7 +67,8 @@ const findUserByEmail = (email) =>
 
 const findUserByGithubUsername = (githubUsername) =>
   data.users.find(
-    (user) => user.githubUsername?.toLowerCase() === githubUsername?.toLowerCase()
+    (user) =>
+      user.githubUsername?.toLowerCase() === githubUsername?.toLowerCase(),
   );
 
 const authMiddleware = (req, res, next) => {
@@ -105,7 +108,10 @@ app.post("/auth/login", async (req, res) => {
   }
 
   const token = createToken();
-  data.sessions[token] = { userId: user.id, createdAt: new Date().toISOString() };
+  data.sessions[token] = {
+    userId: user.id,
+    createdAt: new Date().toISOString(),
+  };
   await saveData(data);
 
   return res.json({
@@ -119,11 +125,15 @@ app.post("/auth/login", async (req, res) => {
 app.post("/auth/signup", async (req, res) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password) {
-    return res.status(400).json({ message: "Username, email, and password are required" });
+    return res
+      .status(400)
+      .json({ message: "Username, email, and password are required" });
   }
 
   if (findUserByEmail(email)) {
-    return res.status(409).json({ message: "An account with that email already exists" });
+    return res
+      .status(409)
+      .json({ message: "An account with that email already exists" });
   }
 
   const id = `user-${crypto.randomBytes(8).toString("hex")}`;
@@ -181,9 +191,11 @@ app.put("/settings", authMiddleware, async (req, res) => {
 
 app.get("/auth/github", (req, res) => {
   if (!githubClientId || !githubClientSecret) {
-    return res.status(500).send(
-      "GitHub OAuth is not configured. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET."
-    );
+    return res
+      .status(500)
+      .send(
+        "GitHub OAuth is not configured. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.",
+      );
   }
 
   const redirectUri = String(req.query.redirect_uri || "");
@@ -210,27 +222,35 @@ app.post("/auth/github/callback", async (req, res) => {
 
   const { code, redirectUri } = req.body;
   if (!code || !redirectUri) {
-    return res.status(400).json({ message: "code and redirectUri are required" });
+    return res
+      .status(400)
+      .json({ message: "code and redirectUri are required" });
   }
 
-  const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
+  const tokenResponse = await fetch(
+    "https://github.com/login/oauth/access_token",
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: githubClientId,
+        client_secret: githubClientSecret,
+        code,
+        redirect_uri: redirectUri,
+      }),
     },
-    body: new URLSearchParams({
-      client_id: githubClientId,
-      client_secret: githubClientSecret,
-      code,
-      redirect_uri: redirectUri,
-    }),
-  });
+  );
 
   const tokenData = await tokenResponse.json();
   if (!tokenData.access_token) {
     return res.status(400).json({
-      message: tokenData.error_description || tokenData.error || "Failed to exchange GitHub code",
+      message:
+        tokenData.error_description ||
+        tokenData.error ||
+        "Failed to exchange GitHub code",
     });
   }
 
@@ -244,7 +264,9 @@ app.post("/auth/github/callback", async (req, res) => {
   });
 
   if (!githubResponse.ok) {
-    return res.status(502).json({ message: "Failed to fetch GitHub user profile" });
+    return res
+      .status(502)
+      .json({ message: "Failed to fetch GitHub user profile" });
   }
 
   const githubProfile = await githubResponse.json();
@@ -261,7 +283,7 @@ app.post("/auth/github/callback", async (req, res) => {
     if (emailsResponse.ok) {
       const emails = await emailsResponse.json();
       const primary = emails.find(
-        (item) => item.primary && item.verified && item.email
+        (item) => item.primary && item.verified && item.email,
       );
       email = primary?.email || emails.find((item) => item.verified)?.email;
     }
@@ -270,7 +292,9 @@ app.post("/auth/github/callback", async (req, res) => {
   const githubUsername = githubProfile.login;
   const normalizedEmail = email || `${githubUsername}@users.noreply.github.com`;
 
-  let user = findUserByGithubUsername(githubUsername) || findUserByEmail(normalizedEmail);
+  let user =
+    findUserByGithubUsername(githubUsername) ||
+    findUserByEmail(normalizedEmail);
   if (!user) {
     const id = `user-${crypto.randomBytes(8).toString("hex")}`;
     user = {
@@ -292,7 +316,10 @@ app.post("/auth/github/callback", async (req, res) => {
   }
 
   const token = createToken();
-  data.sessions[token] = { userId: user.id, createdAt: new Date().toISOString() };
+  data.sessions[token] = {
+    userId: user.id,
+    createdAt: new Date().toISOString(),
+  };
   await saveData(data);
 
   return res.json({
@@ -309,5 +336,7 @@ app.get("/health", (_req, res) => {
 
 app.listen(port, () => {
   console.log(`Auth server listening on http://localhost:${port}`);
-  console.log("Use GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET to enable GitHub OAuth.");
+  console.log(
+    "Use GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET to enable GitHub OAuth.",
+  );
 });
