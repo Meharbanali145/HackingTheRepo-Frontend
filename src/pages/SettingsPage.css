@@ -47,6 +47,36 @@
   border: 1px solid rgba(240, 192, 64, 0.15);
 }
 
+.github-connect-btn {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  align-self: flex-start;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-md);
+  background: var(--text);
+  color: var(--bg);
+  padding: 10px 15px;
+  font-size: 12px;
+  font-weight: 750;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+
+.github-connect-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--border3);
+  box-shadow: var(--shadow-sm);
+}
+
+.github-connect-btn svg {
+  flex-shrink: 0;
+}
+
 /* Token field */
 .token-field {
   display: flex;

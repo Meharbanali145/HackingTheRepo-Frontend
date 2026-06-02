@@ -8,11 +8,18 @@ import {
 import api from "../utils/api";
 import type { ApiErrorResponse, AuthResponse, AuthUser, LocalUser } from "../types";
 
+interface GithubOAuthSettings {
+  githubUsername: string;
+  githubToken: string;
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<AuthResponse>;
   signup: (username: string, email: string, password: string) => Promise<AuthResponse>;
+  loginWithGithub: () => void;
+  completeGithubLogin: (search: string) => Promise<AuthResponse>;
   logout: () => void;
   refreshUser: () => Promise<AuthUser | null>;
 }
@@ -27,6 +34,8 @@ const STORAGE_KEYS = {
   token: "rm_token",
   user: "rm_user",
   users: "rm_users",
+  githubOAuthState: "rm_github_oauth_state",
+  pendingGithubSettings: "rm_pending_github_settings",
 };
 
 const DEMO_USER = {
@@ -47,6 +56,24 @@ function readJson<T>(key: string, fallback: T): T {
 
 function writeJson<T>(key: string, value: T): void {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getApiOrigin(): string {
+  const baseURL = api.defaults.baseURL || "/api";
+  return new URL(baseURL, window.location.origin).toString().replace(/\/$/, "");
+}
+
+function decodeJsonParam<T>(value: string | null): T | null {
+  if (!value) return null;
+  try {
+    return JSON.parse(decodeURIComponent(value)) as T;
+  } catch {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return null;
+    }
+  }
 }
 
 function stripSensitive(
@@ -187,6 +214,93 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const persistGithubSettings = async (
+    githubUsername?: string,
+    githubToken?: string
+  ): Promise<void> => {
+    if (!githubUsername && !githubToken) return;
+
+    const pendingSettings: GithubOAuthSettings = {
+      githubUsername: githubUsername ?? "",
+      githubToken: githubToken ?? "",
+    };
+    writeJson(STORAGE_KEYS.pendingGithubSettings, pendingSettings);
+
+    if (!githubToken) return;
+
+    try {
+      await api.put("/settings", {
+        githubUsername: githubUsername ?? "",
+        githubToken,
+        openaiKey: "",
+      });
+      localStorage.removeItem(STORAGE_KEYS.pendingGithubSettings);
+    } catch {
+      // Keep pending settings so Settings can apply them after the session is ready.
+    }
+  };
+
+  const loginWithGithub = (): void => {
+    const state = crypto.randomUUID();
+    sessionStorage.setItem(STORAGE_KEYS.githubOAuthState, state);
+
+    const callbackUrl = `${window.location.origin}/auth/github/callback`;
+    const githubLoginUrl = new URL(`${getApiOrigin()}/auth/github`);
+    githubLoginUrl.searchParams.set("redirect_uri", callbackUrl);
+    githubLoginUrl.searchParams.set("state", state);
+
+    window.location.assign(githubLoginUrl.toString());
+  };
+
+  const completeGithubLogin = async (search: string): Promise<AuthResponse> => {
+    const params = new URLSearchParams(search);
+    const error = params.get("error");
+    if (error) {
+      throw new Error(params.get("error_description") || error);
+    }
+
+    const returnedState = params.get("state");
+    const expectedState = sessionStorage.getItem(STORAGE_KEYS.githubOAuthState);
+    if (expectedState && returnedState && returnedState !== expectedState) {
+      throw new Error("GitHub sign-in state did not match. Please try again.");
+    }
+    sessionStorage.removeItem(STORAGE_KEYS.githubOAuthState);
+
+    let data: AuthResponse;
+    const code = params.get("code");
+    if (code) {
+      const response = await api.post<AuthResponse>("/auth/github/callback", {
+        code,
+        state: returnedState,
+        redirectUri: `${window.location.origin}/auth/github/callback`,
+      });
+      data = response.data;
+    } else {
+      const token = params.get("token");
+      const user = decodeJsonParam<AuthUser>(params.get("user"));
+      if (!token || !user) {
+        throw new Error("GitHub sign-in response was missing a user session.");
+      }
+      data = {
+        token,
+        user,
+        githubUsername: params.get("githubUsername") || user.githubUsername,
+        githubToken: params.get("githubToken") || undefined,
+      };
+    }
+
+    const nextUser = stripSensitive(data.user as LocalUser | AuthUser);
+    localStorage.setItem(STORAGE_KEYS.token, data.token);
+    api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
+    if (nextUser) {
+      writeJson(STORAGE_KEYS.user, nextUser);
+      setUser(nextUser);
+    }
+
+    await persistGithubSettings(data.githubUsername, data.githubToken);
+    return { ...data, user: nextUser };
+  };
+
   const logout = (): void => {
     localStorage.removeItem(STORAGE_KEYS.token);
     localStorage.removeItem(STORAGE_KEYS.user);
@@ -217,7 +331,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, refreshUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        signup,
+        loginWithGithub,
+        completeGithubLogin,
+        logout,
+        refreshUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
