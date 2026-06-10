@@ -106,45 +106,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem(STORAGE_KEYS.token);
     const cachedUser = readJson<AuthUser | null>(STORAGE_KEYS.user, null);
-    if (token) {
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      api.get("/auth/me")
-        .then((r) => {
-          const nextUser = stripSensitive(r.data as AuthUser);
-          if (nextUser) {
-            writeJson(STORAGE_KEYS.user, nextUser);
-            setUser(nextUser);
-          }
-        })
-        .catch((error: unknown) => {
-          if (shouldUseLocalFallback(error) && cachedUser) {
-            api.defaults.headers.common["Authorization"] = "Bearer local-session";
-            setUser(cachedUser);
-            return;
-          }
 
-          localStorage.removeItem(STORAGE_KEYS.token);
-          localStorage.removeItem(STORAGE_KEYS.user);
-          delete api.defaults.headers.common["Authorization"];
-        })
-        .finally(() => setLoading(false));
-    } else {
-      if (cachedUser) {
-        api.defaults.headers.common["Authorization"] = "Bearer local-session";
-        setUser(cachedUser);
-      }
-      setLoading(false);
-    }
+    api
+      .get("/auth/me")
+      .then((r) => {
+        const nextUser = stripSensitive(r.data as AuthUser);
+        if (nextUser) {
+          writeJson(STORAGE_KEYS.user, nextUser);
+          setUser(nextUser);
+        }
+      })
+      .catch((error: unknown) => {
+        if (shouldUseLocalFallback(error) && cachedUser) {
+          api.defaults.headers.common["Authorization"] = "Bearer local-session";
+          setUser(cachedUser);
+          return;
+        }
+
+        // clear cached session info
+        localStorage.removeItem(STORAGE_KEYS.token);
+        localStorage.removeItem(STORAGE_KEYS.user);
+        delete api.defaults.headers.common["Authorization"];
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const login = async (email: string, password: string): Promise<AuthResponse> => {
     try {
       const { data } = await api.post("/auth/login", { email, password });
       const nextUser = stripSensitive(data.user as LocalUser | AuthUser);
-      localStorage.setItem(STORAGE_KEYS.token, data.token);
-      api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
+      // Server sets HttpOnly cookie for session; persist only the user
       if (nextUser) {
         writeJson(STORAGE_KEYS.user, nextUser);
         setUser(nextUser);
@@ -181,8 +173,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const { data } = await api.post("/auth/signup", { username, email, password });
       const nextUser = stripSensitive(data.user as LocalUser | AuthUser);
-      localStorage.setItem(STORAGE_KEYS.token, data.token);
-      api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
+      // Server sets cookie for new session; persist user
       if (nextUser) {
         writeJson(STORAGE_KEYS.user, nextUser);
         setUser(nextUser);
@@ -290,8 +281,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     const nextUser = stripSensitive(data.user as LocalUser | AuthUser);
-    localStorage.setItem(STORAGE_KEYS.token, data.token);
-    api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
+    // Server sets cookie for the session; persist user
     if (nextUser) {
       writeJson(STORAGE_KEYS.user, nextUser);
       setUser(nextUser);
@@ -302,6 +292,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const logout = (): void => {
+    // Ask server to clear session cookie and server-side session
+    void api.post("/auth/logout").catch(() => {});
     localStorage.removeItem(STORAGE_KEYS.token);
     localStorage.removeItem(STORAGE_KEYS.user);
     delete api.defaults.headers.common["Authorization"];

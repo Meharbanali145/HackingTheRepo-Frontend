@@ -597,12 +597,21 @@ label {
 }
 
 .spinner {
+  display: inline-block;
+  box-sizing: border-box;
   width: 20px;
   height: 20px;
   border: 2px solid var(--border2);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
+}
+
+.auth-loading-panel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 .theme-toggle {
