@@ -28,13 +28,20 @@ export default function DashboardPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const MIN_SPINNER_MS = 1000; // ensure spinner visible for at least this duration
+
   const load = async (): Promise<void> => {
+    setLoading(true);
+    const start = Date.now();
     try {
       const { data } = await api.get("/jobs");
       setJobs(data as Job[]);
     } catch {
       setJobs([]);
     } finally {
+      const elapsed = Date.now() - start;
+      const remaining = Math.max(0, MIN_SPINNER_MS - elapsed);
+      if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
       setLoading(false);
     }
   };

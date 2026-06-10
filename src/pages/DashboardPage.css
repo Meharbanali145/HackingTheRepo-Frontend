@@ -255,6 +255,8 @@
 
 /* Spinner (reused globally) */
 .spinner {
+  display: inline-block;
+  box-sizing: border-box;
   width: 20px;
   height: 20px;
   border: 2px solid var(--border2);

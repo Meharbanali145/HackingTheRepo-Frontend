@@ -49,7 +49,27 @@ src/
 │   ├── NewJobPage        ← Submit a new AI job
 │   ├── JobDetailPage     ← Job status, PR link, refinement
 │   └── SettingsPage      ← GitHub token + OpenAI key
-└── components/
+The frontend will proxy `/api/*` to the auth backend during development.
+
+### Encrypted secrets at rest
+
+The local auth backend can encrypt sensitive values (GitHub tokens and OpenAI keys) before persisting them to `auth-data.json`. To enable AES-256-GCM encryption set the `REPOMIND_ENCRYPTION_KEY` environment variable when starting the server. The key must be 32 bytes (provide as base64 or hex).
+
+Generate a key with OpenSSL:
+
+```bash
+# base64 (recommended)
+openssl rand -base64 32
+
+# or hex
+openssl rand -hex 32
+```
+
+Start the backend with the key:
+
+```bash
+REPOMIND_ENCRYPTION_KEY=<base64-or-hex-key> GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... npm run dev:api
+```
     ├── Layout            ← Sidebar nav + main content wrapper
     ├── StatusBadge       ← Coloured pill for job status
     └── ThemeToggle       ← Dark/light switch button

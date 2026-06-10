@@ -23,12 +23,67 @@ const defaultData = {
       githubUsername: "",
       githubToken: "",
       openaiKey: "",
+      role: "admin",
       totalJobs: 0,
       successfulPRs: 0,
     },
   ],
+  jobs: [],
   sessions: {},
 };
+
+// Encryption helpers — AES-256-GCM
+const ENC_KEY_ENV = process.env.REPOMIND_ENCRYPTION_KEY;
+let ENC_KEY = null;
+if (ENC_KEY_ENV) {
+  try {
+    // Try base64, then hex, then raw
+    let buf = Buffer.from(ENC_KEY_ENV, "base64");
+    if (buf.length !== 32) {
+      buf = Buffer.from(ENC_KEY_ENV, "hex");
+    }
+    if (buf.length === 32) ENC_KEY = buf;
+  } catch {
+    try {
+      const buf = Buffer.from(ENC_KEY_ENV, "hex");
+      if (buf.length === 32) ENC_KEY = buf;
+    } catch {
+      ENC_KEY = null;
+    }
+  }
+}
+
+function encryptSecret(plain) {
+  if (!plain) return "";
+  if (!ENC_KEY) return plain; // fallback: store plaintext if no key provided
+  try {
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", ENC_KEY, iv);
+    const ct = Buffer.concat([cipher.update(String(plain), "utf8"), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return Buffer.concat([iv, tag, ct]).toString("base64");
+  } catch (err) {
+    return String(plain);
+  }
+}
+
+function decryptSecret(stored) {
+  if (!stored) return "";
+  if (!ENC_KEY) return stored; // fallback: assume plaintext
+  try {
+    const buf = Buffer.from(stored, "base64");
+    const iv = buf.slice(0, 12);
+    const tag = buf.slice(12, 28);
+    const ct = buf.slice(28);
+    const decipher = crypto.createDecipheriv("aes-256-gcm", ENC_KEY, iv);
+    decipher.setAuthTag(tag);
+    const plain = Buffer.concat([decipher.update(ct), decipher.final()]).toString("utf8");
+    return plain;
+  } catch (err) {
+    // If decryption fails, assume the stored value was plaintext
+    return stored;
+  }
+}
 
 const loadData = async () => {
   try {
@@ -47,8 +102,10 @@ const saveData = async (data) => {
 const data = await loadData();
 
 const normalizeUser = (user) => {
-  const { password: _password, ...safeUser } = user;
+  const { password: _password, githubToken: _gt, openaiKey: _ok, ...safeUser } = user;
   void _password;
+  void _gt;
+  void _ok;
   return safeUser;
 };
 
@@ -56,8 +113,9 @@ const createToken = () => crypto.randomBytes(24).toString("hex");
 
 const getUserSettings = (user) => ({
   githubUsername: user.githubUsername || "",
-  githubToken: user.githubToken || "",
-  openaiKey: user.openaiKey || "",
+  // Never return secrets from settings endpoint — only indicate presence
+  githubToken: "",
+  openaiKey: "",
   hasGithubToken: Boolean(user.githubToken),
   hasOpenaiKey: Boolean(user.openaiKey),
 });
@@ -76,12 +134,21 @@ const authMiddleware = (req, res, next) => {
   const token = authHeader.startsWith("Bearer ")
     ? authHeader.slice(7)
     : undefined;
+  // If no Authorization header, try cookie 'rm_token'
+  let finalToken = token;
+  if (!finalToken && req.headers.cookie) {
+    const cookies = Object.fromEntries(req.headers.cookie.split(/;\s*/).map(c => {
+      const idx = c.indexOf('=');
+      return [c.slice(0, idx), decodeURIComponent(c.slice(idx+1))];
+    }));
+    finalToken = cookies['rm_token'];
+  }
 
-  if (!token) {
+  if (!finalToken) {
     return res.status(401).json({ message: "Missing authorization token" });
   }
 
-  const session = data.sessions[token];
+  const session = data.sessions[finalToken];
   if (!session) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
@@ -92,7 +159,14 @@ const authMiddleware = (req, res, next) => {
   }
 
   req.user = user;
-  req.sessionToken = token;
+  req.sessionToken = finalToken;
+  next();
+};
+
+const requireAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ message: "Admin access required" });
+  }
   next();
 };
 
@@ -114,11 +188,20 @@ app.post("/auth/login", async (req, res) => {
   };
   await saveData(data);
 
+  // Set HttpOnly cookie for auth token (secure in production)
+  const cookieOpts = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  };
+  res.cookie && res.cookie("rm_token", token, cookieOpts);
+
+  // Also return user for client convenience (token sent via cookie)
   return res.json({
-    token,
     user: normalizeUser(user),
     githubUsername: user.githubUsername || undefined,
-    githubToken: user.githubToken || undefined,
+    githubToken: user.githubToken ? decryptSecret(user.githubToken) : undefined,
   });
 });
 
@@ -145,6 +228,7 @@ app.post("/auth/signup", async (req, res) => {
     githubUsername: "",
     githubToken: "",
     openaiKey: "",
+    role: "user", // Assign default role as user
     totalJobs: 0,
     successfulPRs: 0,
   };
@@ -154,12 +238,16 @@ app.post("/auth/signup", async (req, res) => {
   data.sessions[token] = { userId: id, createdAt: new Date().toISOString() };
   await saveData(data);
 
-  return res.json({
-    token,
-    user: normalizeUser(user),
-    githubUsername: undefined,
-    githubToken: undefined,
-  });
+  // Set HttpOnly cookie for auth token
+  const cookieOpts = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  };
+  res.cookie && res.cookie("rm_token", token, cookieOpts);
+
+  return res.json({ user: normalizeUser(user) });
 });
 
 app.get("/auth/me", authMiddleware, (req, res) => {
@@ -178,15 +266,81 @@ app.put("/settings", authMiddleware, async (req, res) => {
   }
 
   if (githubToken !== undefined) {
-    req.user.githubToken = String(githubToken || "");
+    req.user.githubToken = githubToken ? encryptSecret(githubToken) : "";
   }
 
   if (openaiKey !== undefined) {
-    req.user.openaiKey = String(openaiKey || "");
+    req.user.openaiKey = openaiKey ? encryptSecret(openaiKey) : "";
   }
 
   await saveData(data);
   return res.json(getUserSettings(req.user));
+});
+
+// Jobs: users create jobs; admins can see all jobs
+app.post("/jobs", authMiddleware, async (req, res) => {
+  const { repoUrl, instruction } = req.body;
+  if (!repoUrl || !instruction) {
+    return res.status(400).json({ message: "repoUrl and instruction are required" });
+  }
+
+  const job = {
+    id: `job-${crypto.randomBytes(8).toString("hex")}`,
+    userId: req.user.id,
+    repoUrl,
+    instruction,
+    status: "queued",
+    createdAt: new Date().toISOString(),
+  };
+  data.jobs.push(job);
+  await saveData(data);
+  return res.status(201).json(job);
+});
+
+app.get("/jobs", authMiddleware, (req, res) => {
+  if (req.user.role === "admin") {
+    return res.json(data.jobs || []);
+  }
+  return res.json((data.jobs || []).filter((j) => j.userId === req.user.id));
+});
+
+app.get("/jobs/:id", authMiddleware, (req, res) => {
+  const job = (data.jobs || []).find((j) => j.id === req.params.id);
+  if (!job) return res.status(404).json({ message: "Job not found" });
+  if (req.user.role !== "admin" && job.userId !== req.user.id) {
+    return res.status(403).json({ message: "Not authorized" });
+  }
+  return res.json(job);
+});
+
+// Admin: manage users
+app.get("/admin/users", authMiddleware, requireAdmin, (req, res) => {
+  return res.json(data.users.map((u) => normalizeUser(u)));
+});
+
+app.put("/admin/users/:id", authMiddleware, requireAdmin, async (req, res) => {
+  const { role } = req.body;
+  const allowed = ["admin", "user"];
+  if (role !== undefined && !allowed.includes(role)) {
+    return res.status(400).json({ message: "Invalid role" });
+  }
+  const user = data.users.find((u) => u.id === req.params.id);
+  if (!user) return res.status(404).json({ message: "User not found" });
+  if (role !== undefined) user.role = role;
+  await saveData(data);
+  return res.json(normalizeUser(user));
+});
+
+app.delete("/admin/users/:id", authMiddleware, requireAdmin, async (req, res) => {
+  const idx = data.users.findIndex((u) => u.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: "User not found" });
+  const [removed] = data.users.splice(idx, 1);
+  // remove sessions
+  for (const t of Object.keys(data.sessions)) {
+    if (data.sessions[t].userId === removed.id) delete data.sessions[t];
+  }
+  await saveData(data);
+  return res.status(204).end();
 });
 
 app.get("/auth/github", (req, res) => {
@@ -303,7 +457,7 @@ app.post("/auth/github/callback", async (req, res) => {
       email: normalizedEmail,
       password: "",
       githubUsername,
-      githubToken: accessToken,
+      githubToken: encryptSecret(accessToken),
       openaiKey: "",
       totalJobs: 0,
       successfulPRs: 0,
@@ -311,7 +465,7 @@ app.post("/auth/github/callback", async (req, res) => {
     data.users.push(user);
   } else {
     user.githubUsername = githubUsername;
-    user.githubToken = accessToken;
+    user.githubToken = encryptSecret(accessToken);
     user.email = normalizedEmail;
   }
 
@@ -322,16 +476,43 @@ app.post("/auth/github/callback", async (req, res) => {
   };
   await saveData(data);
 
-  return res.json({
-    token,
-    user: normalizeUser(user),
-    githubUsername,
-    githubToken: accessToken,
-  });
+  // Set HttpOnly cookie for auth token
+  const cookieOpts = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  };
+  res.cookie && res.cookie("rm_token", token, cookieOpts);
+
+  return res.json({ user: normalizeUser(user), githubUsername });
 });
 
 app.get("/health", (_req, res) => {
   res.send("ok");
+});
+
+// Logout: clear session and cookie
+app.post("/auth/logout", (req, res) => {
+  // find token from cookie or header
+  const authHeader = req.headers.authorization || "";
+  let token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+  if (!token && req.headers.cookie) {
+    const cookies = Object.fromEntries(req.headers.cookie.split(/;\s*/).map(c => {
+      const idx = c.indexOf('=');
+      return [c.slice(0, idx), decodeURIComponent(c.slice(idx+1))];
+    }));
+    token = cookies['rm_token'];
+  }
+  if (token && data.sessions[token]) delete data.sessions[token];
+  // clear cookie
+  if (res.clearCookie) {
+    res.clearCookie('rm_token', { path: '/' });
+  } else {
+    res.setHeader('Set-Cookie', 'rm_token=; Max-Age=0; Path=/; HttpOnly');
+  }
+  saveData(data).catch(() => {});
+  return res.status(204).end();
 });
 
 app.listen(port, () => {
