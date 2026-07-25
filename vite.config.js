@@ -41,9 +41,6 @@ export default defineConfig({
         target: "http://localhost:9100",
         changeOrigin: true,
         configure: (proxy) => {
-          // Metrics are best-effort. If the metrics server (npm run metrics)
-          // isn't running, swallow the connection error and reply 204 instead
-          // of flooding the dev console with ECONNREFUSED stack traces.
           let warned = false;
           proxy.on("error", (_err, _req, res) => {
             if (!warned) {
