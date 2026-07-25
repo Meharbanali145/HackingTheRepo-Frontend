@@ -161,7 +161,9 @@ export default function LandingPage(): ReactElement {
 
       <footer className="landing-footer">
         <span>RepoMind — HackingTheRepo Team</span>
-        <span style={{ color: "var(--text3)" }}>MIT License</span>
+        <span style={{ color: "var(--text3)" }}>
+          HackingTheRepo Proprietary Software · © 2025 QuantumLogics Incorporated
+        </span>
       </footer>
     </div>
   );
