@@ -6,7 +6,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-5.x-646cff?logo=vite&logoColor=white)
 ![React Router](https://img.shields.io/badge/React_Router-6.x-ca4245?logo=reactrouter&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/license-Proprietary-red)
 
 ---
 
@@ -315,4 +315,6 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) to lea
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This software is licensed under the [HackingTheRepo Proprietary Software License Agreement (PPSLA v1.0)](LICENSE).
+
+Copyright © 2025 QuantumLogics Incorporated. All Rights Reserved. Unauthorized use, reproduction, modification, or distribution is strictly prohibited.

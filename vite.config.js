@@ -40,6 +40,23 @@ export default defineConfig({
       "/metrics": {
         target: "http://localhost:9100",
         changeOrigin: true,
+        configure: (proxy) => {
+          let warned = false;
+          proxy.on("error", (_err, _req, res) => {
+            if (!warned) {
+              console.warn(
+                "[metrics] metrics server unavailable at http://localhost:9100 — events dropped. Run `npm run metrics` to enable.",
+              );
+              warned = true;
+            }
+            if (res && !res.headersSent && typeof res.writeHead === "function") {
+              res.writeHead(204);
+            }
+            if (res && typeof res.end === "function") {
+              res.end();
+            }
+          });
+        },
       },
     },
   },
