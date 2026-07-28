@@ -2,6 +2,9 @@ import axios, { type AxiosRequestConfig } from "axios";
 import { context, propagation } from "@opentelemetry/api";
 import { sendMetricEvent } from "./metrics";
 
+const TOKEN_KEY = "rm_token";
+const USER_KEY = "rm_user";
+
 const baseURL =
   import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.length > 0
     ? import.meta.env.VITE_API_URL
@@ -10,7 +13,7 @@ const baseURL =
 const api = axios.create({
   baseURL,
   timeout: 30000,
-  withCredentials: true,
+  withCredentials: false,
 });
 
 const pendingJobRequests = new Set<string>();
@@ -38,10 +41,22 @@ function isJobRequest(url: string | undefined): boolean {
   return path.startsWith("/jobs");
 }
 
+function clearSession(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  delete api.defaults.headers.common["Authorization"];
+}
+
 api.interceptors.request.use((config) => {
   const now = Date.now();
   config.headers = config.headers ?? {};
   propagation.inject(context.active(), config.headers);
+
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
   (
     config as AxiosRequestConfig & { metadata?: { startTime: number } }
   ).metadata = {
@@ -110,6 +125,10 @@ api.interceptors.response.use(
       : 0;
     const status = error.response?.status ?? "ERROR";
 
+    if (error.response?.status === 401) {
+      clearSession();
+    }
+
     void sendMetricEvent({
       type: "api",
       method: (config.method ?? "GET").toUpperCase(),
@@ -139,4 +158,5 @@ api.interceptors.response.use(
   },
 );
 
+export { clearSession, TOKEN_KEY, USER_KEY };
 export default api;

@@ -84,24 +84,6 @@ export default function NewJobPage() {
     }));
   };
 
-  const getLocalInstructionSuggestion = (instruction: string): string => {
-    const trimmed = instruction.trim();
-    if (!trimmed) {
-      return "Write a concise instruction describing the desired code change, include target files or folders, expected behavior, and any tests you want added.";
-    }
-
-    const suggested = trimmed.replace(
-      /(?:please|kindly|could you|can you)/gi,
-      "",
-    );
-    const detailHint =
-      /\b(src|lib|components|pages|utils|hooks|api|tests?)\b/i.test(trimmed)
-        ? ""
-        : " Add the specific files, folders, or functionality that should change.";
-
-    return `Improve this instruction for AI code generation: ${suggested.trim()}. Make it clear, actionable, and focused on the exact behavior you want.${detailHint}`;
-  };
-
   const handleAssist: MouseEventHandler<HTMLButtonElement> = async () => {
     if (!form.instruction.trim()) {
       setAssistantError(
@@ -125,12 +107,22 @@ export default function NewJobPage() {
         data !== null &&
         "improvedInstruction" in data
           ? ((data as { improvedInstruction?: string }).improvedInstruction ??
-            getLocalInstructionSuggestion(form.instruction))
-          : getLocalInstructionSuggestion(form.instruction);
+            "")
+          : "";
+
+      if (!suggestion) {
+        setAssistantError("Assistant returned an empty suggestion. Try again.");
+        return;
+      }
 
       setAssistantSuggestion(suggestion);
-    } catch {
-      setAssistantSuggestion(getLocalInstructionSuggestion(form.instruction));
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setAssistantError(
+        error.response?.data?.message ||
+          "Assistant failed. Check your OpenAI key in Settings and try again.",
+      );
+      setAssistantSuggestion("");
     } finally {
       setAssistantLoading(false);
     }
