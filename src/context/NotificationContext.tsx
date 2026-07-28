@@ -70,6 +70,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               addNotification({ title: "Job completed", body: `Job ${id} completed successfully`, kind: "success", meta: { jobId: id } });
             } else if (status === "failed") {
               addNotification({ title: "Job failed", body: `Job ${id} failed — check the job details`, kind: "error", meta: { jobId: id } });
+            } else if (status === "running" && (prev === "completed" || prev === "failed" || prev === "queued")) {
+              addNotification({ title: "Job running", body: `Job ${id} is running (including refinements)`, kind: "info", meta: { jobId: id } });
             } else if (status === "refined") {
               addNotification({ title: "Review requested", body: `Job ${id} needs review or changes`, kind: "info", meta: { jobId: id } });
             }

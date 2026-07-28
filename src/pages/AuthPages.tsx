@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { GITHUB_OAUTH_ENABLED, useAuth } from "../context/AuthContext";
 import ThemeToggle from "../components/ThemeToggle";
 import "./AuthPage.css";
 
@@ -56,10 +56,14 @@ export function LoginPage(): ReactElement {
       <div className="auth-hint">
         Demo account: <strong>demo@repomind.dev</strong> / <strong>demo1234</strong>
       </div>
-      <GithubButton label="Continue with GitHub" onClick={loginWithGithub} />
-      <div className="auth-divider">
-        <span>or</span>
-      </div>
+      {GITHUB_OAUTH_ENABLED && (
+        <>
+          <GithubButton label="Continue with GitHub" onClick={loginWithGithub} />
+          <div className="auth-divider">
+            <span>or</span>
+          </div>
+        </>
+      )}
       <form onSubmit={handle}>
         <div className="field">
           <label>Email</label>
@@ -107,10 +111,14 @@ export function SignupPage(): ReactElement {
 
   return (
     <AuthLayout title="Create account" sub="Start automating your PRs with RepoMind">
-      <GithubButton label="Sign up with GitHub" onClick={loginWithGithub} />
-      <div className="auth-divider">
-        <span>or</span>
-      </div>
+      {GITHUB_OAUTH_ENABLED && (
+        <>
+          <GithubButton label="Sign up with GitHub" onClick={loginWithGithub} />
+          <div className="auth-divider">
+            <span>or</span>
+          </div>
+        </>
+      )}
       <form onSubmit={handle}>
         <div className="field">
           <label>Username</label>
