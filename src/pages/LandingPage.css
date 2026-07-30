@@ -157,7 +157,7 @@
 }
 .metric-card {
   background: var(--bg3);
-  border: 1px solid var(--border);
+  border: 1px solid var(--accent3);
   border-radius: var(--radius-lg);
   padding: 14px 16px;
   text-align: left;
@@ -172,7 +172,7 @@
 }
 .metric-card span {
   font-size: 12px;
-  color: var(--text2);
+  color: color-mix(in srgb, var(--accent) 65%, var(--text2));
 }
 
 .hero-btn {
@@ -186,7 +186,7 @@
   width: 100%;
   max-width: 700px;
   background: var(--bg2);
-  border: 1px solid var(--border2);
+  border: 1px solid var(--accent3);
   border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow:
@@ -194,6 +194,16 @@
     0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
   text-align: left;
   animation: fadeInUp 0.6s 0.35s ease both;
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+}
+
+.terminal-demo:hover {
+  box-shadow:
+    var(--shadow-accent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
+  transform: translateY(-2px);
 }
 
 .terminal-bar {
@@ -224,12 +234,13 @@
 .terminal-title {
   margin-left: 8px;
   font-size: 11px;
-  color: var(--text3);
+  color: var(--accent);
   font-weight: 500;
 }
 
 .terminal-body {
   padding: 20px 22px;
+  font-family: var(--font-mono);
 }
 
 .t-line {
@@ -290,7 +301,7 @@
 
 .feature-card {
   background: var(--bg2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--accent3);
   border-radius: var(--radius-lg);
   padding: 26px;
   transition:
@@ -312,8 +323,8 @@
 .feature-line::after {
   content: "";
   position: absolute;
-  background: var(--yellow);
-  box-shadow: 0 0 10px var(--yellow);
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
   transition: all 0.4s ease-in-out;
   opacity: 0;
 }

@@ -375,7 +375,7 @@ button:active::after {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #8e7a66, var(--accent));
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
   box-shadow:
     var(--shadow-accent),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
@@ -536,29 +536,29 @@ label {
 }
 
 .badge-queued {
-  background: rgba(168, 139, 61, 0.12);
+  background: color-mix(in srgb, var(--yellow) 12%, transparent);
   color: var(--yellow);
-  border-color: rgba(168, 139, 61, 0.25);
+  border-color: color-mix(in srgb, var(--yellow) 25%, transparent);
 }
 .badge-running {
-  background: rgba(74, 102, 117, 0.12);
+  background: color-mix(in srgb, var(--yellow) 12%, transparent);
   color: var(--blue);
-  border-color: rgba(74, 102, 117, 0.22);
+  border-color: color-mix(in srgb, var(--yellow) 25%, transparent);
 }
 .badge-completed {
-  background: rgba(125, 106, 88, 0.12);
+  background: color-mix(in srgb, var(--yellow) 12%, transparent);
   color: var(--accent);
-  border-color: rgba(125, 106, 88, 0.22);
+  border-color: color-mix(in srgb, var(--yellow) 25%, transparent);
 }
 .badge-failed {
-  background: rgba(181, 74, 74, 0.1);
+  background: color-mix(in srgb, var(--yellow) 12%, transparent);
   color: var(--red);
-  border-color: rgba(181, 74, 74, 0.22);
+  border-color: color-mix(in srgb, var(--yellow) 25%, transparent);
 }
 .badge-refined {
-  background: rgba(122, 107, 138, 0.12);
+  background: color-mix(in srgb, var(--yellow) 12%, transparent);
   color: var(--purple);
-  border-color: rgba(122, 107, 138, 0.22);
+  border-color: color-mix(in srgb, var(--yellow) 25%, transparent);
 }
 
 .badge-dot {
